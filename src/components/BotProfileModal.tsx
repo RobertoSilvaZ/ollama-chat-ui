@@ -1,5 +1,5 @@
-import React from "react";
-import { X, Check } from "lucide-react";
+import React, { useState } from "react";
+import { X, Check, Search } from "lucide-react";
 import {
   PREDEFINED_PROFILES,
   type ExtendedBotProfile,
@@ -26,6 +26,7 @@ export function BotProfileModal({
 }: BotProfileModalProps) {
   const [formData, setFormData] = React.useState(profile);
   const [isCustom, setIsCustom] = React.useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   if (!isOpen) return null;
 
@@ -43,9 +44,15 @@ export function BotProfileModal({
     setIsCustom(false);
   };
 
+  const filteredProfiles = PREDEFINED_PROFILES.filter(
+    (profile) =>
+      profile.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      profile.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl relative max-h-[90vh] overflow-hidden">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-white"
@@ -57,13 +64,28 @@ export function BotProfileModal({
           Bot Profile Settings
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[calc(90vh-8rem)]">
+          <div className="space-y-4 overflow-hidden flex flex-col">
             <h3 className="text-lg font-semibold text-white">
               Predefined Profiles
             </h3>
-            <div className="space-y-2">
-              {PREDEFINED_PROFILES.map((presetProfile, index) => (
+
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search profiles..."
+                className="w-full bg-gray-700 text-white rounded-lg pl-10 pr-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-2 overflow-y-auto flex-1 pr-2">
+              {filteredProfiles.map((presetProfile, index) => (
                 <button
                   key={index}
                   onClick={() => handleProfileSelect(presetProfile)}
@@ -88,11 +110,19 @@ export function BotProfileModal({
                   </div>
                 </button>
               ))}
+              {filteredProfiles.length === 0 && (
+                <div className="text-center text-gray-400 py-4">
+                  No profiles match your search
+                </div>
+              )}
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 overflow-y-auto pr-2"
+          >
+            <h3 className="text-lg font-semibold text-white sticky top-0 bg-gray-800 py-2">
               {isCustom ? "Custom Profile" : "Selected Profile"}
             </h3>
 
@@ -151,7 +181,7 @@ export function BotProfileModal({
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-3 pt-4 sticky bottom-0 bg-gray-800 py-4">
               <button
                 type="button"
                 onClick={onClose}
