@@ -5,3 +5,7 @@ dist
 README.md
 .env
 .env.*
+.bolt
+coverage
+.vscode
+.idea

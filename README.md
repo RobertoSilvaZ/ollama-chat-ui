@@ -11,6 +11,12 @@ Run in the terminal:
 docker-compose up
 ```
 
+## Install a new library
+
+```
+docker-compose exec web npm install new-library
+```
+
 ## Credits
 
 Author: Roberto Silva Z.
