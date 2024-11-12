@@ -1,41 +1,44 @@
-import { useState } from 'react';
-import { toast } from 'react-hot-toast';
-import { db, type Topic } from '../db';
+import { useState } from "react";
+import { toast } from "react-hot-toast";
+import { db, type Topic } from "../db";
 
 export function useTopics() {
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
 
-  const createNewChat = async (selectedModel: string) => {
+  const createNewChat = async (
+    selectedModel: string
+  ): Promise<number | null> => {
     try {
       const topic = {
-        title: 'New Chat',
+        title: "New Chat",
         createdAt: new Date(),
-        modelId: selectedModel
+        modelId: selectedModel,
       };
       const topicId = await db.topics.add(topic);
-      return topicId;
+      // Ensure topicId is a number
+      return typeof topicId === "number" ? topicId : null;
     } catch (error) {
-      toast.error('Failed to create new chat');
+      toast.error("Failed to create new chat");
       return null;
     }
   };
 
   const deleteTopic = async (topicId: number) => {
     try {
-      await db.messages.where('topicId').equals(topicId).delete();
+      await db.messages.where("topicId").equals(topicId).delete();
       await db.topics.delete(topicId);
-      toast.success('Chat deleted');
+      toast.success("Chat deleted");
     } catch (error) {
-      toast.error('Failed to delete chat');
+      toast.error("Failed to delete chat");
     }
   };
 
   const updateTopicTitle = async (topicId: number, newTitle: string) => {
     try {
       await db.topics.update(topicId, { title: newTitle });
-      toast.success('Chat title updated');
+      toast.success("Chat title updated");
     } catch (error) {
-      toast.error('Failed to update chat title');
+      toast.error("Failed to update chat title");
     }
   };
 
@@ -44,6 +47,6 @@ export function useTopics() {
     setEditingTopic,
     createNewChat,
     deleteTopic,
-    updateTopicTitle
+    updateTopicTitle,
   };
 }

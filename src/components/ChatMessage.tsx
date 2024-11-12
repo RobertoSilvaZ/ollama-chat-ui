@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { Bot, User, Trash2, RefreshCw } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import type { Message } from "../db";
+import { useState } from 'react';
+import { Bot, User, Trash2, RefreshCw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { Message } from '../db';
 
 interface ChatMessageProps {
   message: Message;
@@ -14,69 +14,56 @@ interface ChatMessageProps {
   profileTitle?: string;
 }
 
-export function ChatMessage({
-  message,
-  onDelete,
-  onResend,
-  profileTitle,
-}: ChatMessageProps) {
+export function ChatMessage({ message, onDelete, onResend, profileTitle }: ChatMessageProps) {
   const [showActions, setShowActions] = useState(false);
   const isUser = message.isUser;
 
   return (
     <div
-      className={`p-4 ${isUser ? "bg-gray-800" : "bg-gray-900"} relative group`}
+      className={`p-4 ${isUser ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'
+        } relative group`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
       <div className="max-w-4xl mx-auto">
         <div className="flex gap-3">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-              isUser ? "bg-blue-600" : "bg-green-600"
-            }`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-blue-600' : 'bg-green-600'
+              }`}
           >
-            {isUser ? (
-              <User size={20} className="text-white" />
-            ) : (
-              <Bot size={20} className="text-white" />
-            )}
+            {isUser ? <User size={20} className="text-white" /> : <Bot size={20} className="text-white" />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium text-white">
-                {isUser ? "You" : message.modelId}
+              <span className="font-medium text-gray-900 dark:text-white">
+                {isUser ? 'You' : message.modelId}
               </span>
               {!isUser && profileTitle && (
-                <span className="text-sm bg-gray-700 px-2 py-0.5 rounded text-gray-200">
+                <span className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-700 dark:text-gray-200">
                   {profileTitle}
                 </span>
               )}
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {formatDistanceToNow(message.createdAt, { addSuffix: true })}
               </span>
             </div>
-            <div className="prose prose-invert max-w-none">
+            <div className="prose dark:prose-invert max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  code({ node, inline, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || "");
+                  code({ node, inline, className, children, ...props }: any) {
+                    const match = /language-(\w+)/.exec(className || '');
                     return !inline && match ? (
                       <SyntaxHighlighter
-                        {...props}
                         style={oneDark}
                         language={match[1]}
                         PreTag="div"
-                        className="rounded-lg !bg-gray-800 !mt-2 !mb-2"
+                        className="rounded-lg !bg-gray-100 dark:!bg-gray-800 !mt-2 !mb-2"
                       >
-                        {String(children).replace(/\n$/, "")}
+                        {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>
                     ) : (
-                      <code
-                        {...props}
-                        className={`${className} bg-gray-800 rounded px-1 py-0.5`}
-                      >
+                      <code {...props} className={`${className} bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5`}>
                         {children}
                       </code>
                     );
@@ -85,22 +72,16 @@ export function ChatMessage({
                     <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
                   ),
                   ul: ({ children }) => (
-                    <ul className="list-disc pl-4 mb-4 last:mb-0 space-y-2">
-                      {children}
-                    </ul>
+                    <ul className="list-disc pl-4 mb-4 last:mb-0 space-y-2">{children}</ul>
                   ),
                   ol: ({ children }) => (
-                    <ol className="list-decimal pl-4 mb-4 last:mb-0 space-y-2">
-                      {children}
-                    </ol>
+                    <ol className="list-decimal pl-4 mb-4 last:mb-0 space-y-2">{children}</ol>
                   ),
                   li: ({ children }) => (
                     <li className="leading-relaxed">{children}</li>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="border-l-4 border-gray-600 pl-4 italic my-4">
-                      {children}
-                    </blockquote>
+                    <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic my-4">{children}</blockquote>
                   ),
                   h1: ({ children }) => (
                     <h1 className="text-2xl font-bold mb-4 mt-6">{children}</h1>
