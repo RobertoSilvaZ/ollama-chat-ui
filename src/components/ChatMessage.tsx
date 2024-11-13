@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bot, User, Trash2, RefreshCw } from 'lucide-react';
+import { Bot, User, Trash2, RefreshCw, Copy, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +12,30 @@ interface ChatMessageProps {
   onDelete?: () => void;
   onResend?: () => void;
   profileTitle?: string;
+}
+
+interface CopyButtonProps {
+  text: string;
+}
+
+function CopyButton({ text }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white bg-gray-800/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+      title={copied ? 'Copied!' : 'Copy code'}
+    >
+      {copied ? <Check size={16} /> : <Copy size={16} />}
+    </button>
+  );
 }
 
 export function ChatMessage({ message, onDelete, onResend, profileTitle }: ChatMessageProps) {
@@ -53,15 +77,20 @@ export function ChatMessage({ message, onDelete, onResend, profileTitle }: ChatM
                 components={{
                   code({ node, inline, className, children, ...props }: any) {
                     const match = /language-(\w+)/.exec(className || '');
+                    const code = String(children).replace(/\n$/, '');
+
                     return !inline && match ? (
-                      <SyntaxHighlighter
-                        style={oneDark}
-                        language={match[1]}
-                        PreTag="div"
-                        className="rounded-lg !bg-gray-100 dark:!bg-gray-800 !mt-2 !mb-2"
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
+                      <div className="relative group">
+                        <SyntaxHighlighter
+                          style={oneDark}
+                          language={match[1]}
+                          PreTag="div"
+                          className="rounded-lg !bg-gray-100 dark:!bg-gray-800 !mt-2 !mb-2"
+                        >
+                          {code}
+                        </SyntaxHighlighter>
+                        <CopyButton text={code} />
+                      </div>
                     ) : (
                       <code {...props} className={`${className} bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5`}>
                         {children}
