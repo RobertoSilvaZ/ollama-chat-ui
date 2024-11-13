@@ -81,14 +81,16 @@ export function ChatMessage({ message, onDelete, onResend, profileTitle }: ChatM
 
                     return !inline && match ? (
                       <div className="relative group">
-                        <SyntaxHighlighter
-                          style={oneDark}
-                          language={match[1]}
-                          PreTag="div"
-                          className="rounded-lg !bg-gray-100 dark:!bg-gray-800 !mt-2 !mb-2"
-                        >
-                          {code}
-                        </SyntaxHighlighter>
+                        <div className="overflow-x-auto">
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match[1]}
+                            PreTag="div"
+                            className="rounded-lg !bg-gray-100 dark:!bg-gray-800 !mt-2 !mb-2"
+                          >
+                            {code}
+                          </SyntaxHighlighter>
+                        </div>
                         <CopyButton text={code} />
                       </div>
                     ) : (

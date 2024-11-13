@@ -1,39 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Send, Loader2, Settings } from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
-import { useParams, useNavigate } from 'react-router-dom';
-import { db, type Message, type Topic } from '../db';
-import { Sidebar } from './Sidebar';
+import { Settings } from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
+import { db, type Message } from '../db';
 import { ChatMessage } from './ChatMessage';
+import { Sidebar } from './Sidebar';
 import { ModelSelector } from './ModelSelector';
 import { ThemeToggle } from './ThemeToggle';
-import { BotProfileModal, type BotProfile } from './BotProfileModal';
+import { BotProfileModal } from './BotProfileModal';
+import { MarkdownInput } from './MarkdownInput';
 import { useModels } from '../hooks/useModels';
 import { useChat } from '../hooks/useChat';
 import { useTopics } from '../hooks/useTopics';
-import { PREDEFINED_PROFILES } from '../constants/profiles';
-import { NotFound } from './NotFound';
+import type { BotProfile } from './BotProfileModal';
 
-const DEFAULT_BOT_PROFILE: BotProfile = PREDEFINED_PROFILES[0];
+const DEFAULT_BOT_PROFILE: BotProfile = {
+  systemPrompt: "You are a helpful AI assistant.",
+  temperature: 0.7
+};
 
 export function ChatInterface() {
   const { topicId } = useParams();
   const navigate = useNavigate();
-  const [currentTopicId, setCurrentTopicId] = useState<number | null>(() =>
+  const [currentTopicId, setCurrentTopicId] = useState<number | null>(
     topicId ? parseInt(topicId, 10) : null
   );
   const [input, setInput] = useState('');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [botProfile, setBotProfile] = useState<BotProfile>(DEFAULT_BOT_PROFILE);
-  const [topicExists, setTopicExists] = useState(true);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const { models, selectedModel, setSelectedModel } = useModels();
-  const { isLoading, sendMessage } = useChat(currentTopicId, selectedModel);
   const { editingTopic, setEditingTopic, createNewChat, deleteTopic, updateTopicTitle } = useTopics();
+  const { isLoading, sendMessage } = useChat(currentTopicId, selectedModel);
 
   const messages = useLiveQuery<Message[]>(
     () => currentTopicId ?
@@ -42,37 +42,28 @@ export function ChatInterface() {
     [currentTopicId]
   ) ?? [];
 
-  const currentTopic = useLiveQuery<Topic | undefined>(
-    () => currentTopicId ?
-      db.topics.get(currentTopicId) :
-      Promise.resolve(undefined),
-    [currentTopicId]
+  const topics = useLiveQuery(
+    () => db.topics.orderBy('createdAt').reverse().toArray(),
+    []
   );
 
   useEffect(() => {
     if (topicId) {
-      const checkTopic = async () => {
-        const topic = await db.topics.get(parseInt(topicId, 10));
-        setTopicExists(!!topic);
-        if (topic) {
-          setCurrentTopicId(topic.id ?? null);
-        }
-      };
-      checkTopic();
+      const numericTopicId = parseInt(topicId, 10);
+      setCurrentTopicId(numericTopicId);
     }
   }, [topicId]);
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleNewChat = async () => {
     const newTopicId = await createNewChat(selectedModel);
-    if (typeof newTopicId === 'number') {
+    if (newTopicId !== null) {
       setCurrentTopicId(newTopicId);
       navigate(`/chat/${newTopicId}`);
+      toast.success('New chat created');
     }
   };
 
@@ -83,42 +74,44 @@ export function ChatInterface() {
 
   const handleDeleteTopic = async (topicId: number) => {
     await deleteTopic(topicId);
-    navigate('/chat');
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage(e);
+    if (currentTopicId === topicId) {
+      const firstTopic = topics?.[0];
+      if (firstTopic?.id) {
+        handleTopicSelect(firstTopic.id);
+      } else {
+        navigate('/chat');
+        setCurrentTopicId(null);
+      }
     }
+    toast.success('Chat deleted');
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const handleDeleteMessage = async (messageId: number) => {
+    await db.messages.delete(messageId);
+    toast.success('Message deleted');
+  };
 
-    const content = input;
+  const handleResendMessage = async (message: Message) => {
+    if (isLoading) return;
+    await sendMessage(message.content, messages, botProfile);
+    toast.success('Message resent');
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const promise = sendMessage(input, messages, botProfile);
+    toast.promise(promise, {
+      loading: 'Sending message...',
+      success: 'Message sent',
+      error: 'Failed to send message'
+    });
     setInput('');
-    await sendMessage(content, messages, botProfile);
   };
-
-  const handleResend = (message: Message) => {
-    sendMessage(message.content, messages, botProfile);
-  };
-
-  if (topicId && !topicExists) {
-    return <NotFound />;
-  }
 
   return (
-    <div className="flex h-screen bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white transition-colors">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <Toaster position="top-right" />
-      <BotProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        profile={botProfile}
-        onSave={setBotProfile}
-      />
       <Sidebar
         currentTopicId={currentTopicId}
         onTopicSelect={handleTopicSelect}
@@ -129,75 +122,55 @@ export function ChatInterface() {
         onUpdateTopicTitle={updateTopicTitle}
       />
 
-      <div className="flex-1 flex flex-col">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h1 className="text-xl font-bold">
-            {currentTopic?.title || 'Select or start a new chat'}
-          </h1>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-gray-800 p-4 flex items-center justify-between">
+          <ModelSelector
+            models={models}
+            selectedModel={selectedModel}
+            onModelSelect={setSelectedModel}
+          />
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors group relative"
-              title="Bot Settings"
+              className="p-2 text-gray-400 hover:text-gray-200 transition-colors"
+              title="Bot settings"
             >
               <Settings size={20} />
-              <span className="absolute right-0 top-full mt-1 hidden group-hover:block bg-white dark:bg-gray-800 text-sm px-2 py-1 rounded whitespace-nowrap shadow-lg">
-                {botProfile.title || 'Custom Profile'}
-              </span>
             </button>
-            <ModelSelector
-              models={models}
-              selectedModel={selectedModel}
-              onModelSelect={setSelectedModel}
-            />
+            <ThemeToggle />
           </div>
-        </div>
+        </header>
 
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900" ref={messagesContainerRef}>
+        <div className="flex-1 overflow-y-auto">
           {messages?.map((message) => (
             <ChatMessage
               key={message.id}
               message={message}
-              onDelete={message.id ? () => db.messages.delete(message.id!) : undefined}
-              onResend={message.isUser ? () => handleResend(message) : undefined}
-              profileTitle={!message.isUser ? botProfile.title : undefined}
+              onDelete={message.id ? () => handleDeleteMessage(message.id!) : undefined}
+              onResend={message.isUser ? () => handleResendMessage(message) : undefined}
+              profileTitle={botProfile.title}
             />
           ))}
-          {isLoading && (
-            <div className="flex items-center gap-2 p-4 text-gray-500 dark:text-gray-400">
-              <Loader2 className="animate-spin" size={20} />
-              Thinking...
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
 
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex gap-4">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              placeholder="Type your message... (Shift + Enter for new line)"
-              className="flex-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[60px] max-h-[200px] border border-gray-200 dark:border-gray-700"
-              rows={1}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || !currentTopicId || isLoading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[60px]"
-            >
-              {isLoading ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <Send size={20} />
-              )}
-              Send
-            </button>
-          </div>
-        </form>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <MarkdownInput
+            value={input}
+            onChange={setInput}
+            onSubmit={handleSendMessage}
+            placeholder="Type your message... (Markdown supported)"
+            isLoading={isLoading}
+          />
+        </div>
       </div>
+
+      <BotProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        profile={botProfile}
+        onSave={setBotProfile}
+      />
     </div>
   );
 }
