@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Settings } from 'lucide-react';
@@ -97,6 +97,11 @@ export function ChatInterface() {
     toast.success('Message resent');
   };
 
+  const handleEditMessage = (content: string) => {
+    setInput(prev => prev + (prev ? '\n\n' : '') + content);
+    toast.success('Message copied to input');
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -148,6 +153,7 @@ export function ChatInterface() {
               message={message}
               onDelete={message.id ? () => handleDeleteMessage(message.id!) : undefined}
               onResend={message.isUser ? () => handleResendMessage(message) : undefined}
+              onEdit={message.isUser ? handleEditMessage : undefined}
               profileTitle={botProfile.title}
             />
           ))}

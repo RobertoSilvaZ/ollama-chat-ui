@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Bot, User, Trash2, RefreshCw, Copy, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bot, User, Trash2, RefreshCw, Copy, Check, Edit } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,6 +11,7 @@ interface ChatMessageProps {
   message: Message;
   onDelete?: () => void;
   onResend?: () => void;
+  onEdit?: (content: string) => void;
   profileTitle?: string;
 }
 
@@ -38,7 +39,7 @@ function CopyButton({ text }: CopyButtonProps) {
   );
 }
 
-export function ChatMessage({ message, onDelete, onResend, profileTitle }: ChatMessageProps) {
+export function ChatMessage({ message, onDelete, onResend, onEdit, profileTitle }: ChatMessageProps) {
   const [showActions, setShowActions] = useState(false);
   const isUser = message.isUser;
 
@@ -134,14 +135,25 @@ export function ChatMessage({ message, onDelete, onResend, profileTitle }: ChatM
 
       {showActions && (
         <div className="absolute top-4 right-4 flex gap-2">
-          {isUser && onResend && (
-            <button
-              onClick={onResend}
-              className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
-              title="Resend message"
-            >
-              <RefreshCw size={20} />
-            </button>
+          {isUser && (
+            <>
+              <button
+                onClick={() => onEdit?.(message.content)}
+                className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                title="Edit message"
+              >
+                <Edit size={20} />
+              </button>
+              {onResend && (
+                <button
+                  onClick={onResend}
+                  className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                  title="Resend message"
+                >
+                  <RefreshCw size={20} />
+                </button>
+              )}
+            </>
           )}
           {onDelete && (
             <button
