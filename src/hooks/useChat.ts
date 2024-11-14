@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { db } from "../db";
 import type { Message } from "../db";
@@ -6,6 +6,7 @@ import type { BotProfile } from "../components/BotProfileModal";
 
 export function useChat(currentTopicId: number | null, selectedModel: string) {
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const buildPrompt = (
     userInput: string,
@@ -26,6 +27,15 @@ export function useChat(currentTopicId: number | null, selectedModel: string) {
     return fullPrompt;
   };
 
+  const cancelRequest = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      toast.success("Request cancelled");
+    }
+  };
+
   const sendMessage = async (
     content: string,
     messages: Message[] | undefined,
@@ -35,6 +45,7 @@ export function useChat(currentTopicId: number | null, selectedModel: string) {
 
     setIsLoading(true);
     let userMessage: number | undefined;
+    abortControllerRef.current = new AbortController();
 
     try {
       userMessage = (await db.messages.add({
@@ -58,6 +69,7 @@ export function useChat(currentTopicId: number | null, selectedModel: string) {
             stream: false,
             temperature: botProfile.temperature,
           }),
+          signal: abortControllerRef.current.signal,
         }
       );
 
@@ -81,15 +93,20 @@ export function useChat(currentTopicId: number | null, selectedModel: string) {
         });
       }
     } catch (error) {
-      toast.error("Failed to send message");
-      console.error("Error:", error);
-      if (userMessage) {
-        await db.messages.delete(userMessage);
+      if (error instanceof Error && error.name === "AbortError") {
+        // Request was cancelled, no need for error toast
+      } else {
+        toast.error("Failed to send message");
+        console.error("Error:", error);
+        if (userMessage) {
+          await db.messages.delete(userMessage);
+        }
       }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
-  return { isLoading, sendMessage };
+  return { isLoading, sendMessage, cancelRequest };
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Edit3, Eye, Maximize2, Minimize2, Code, Loader2 } from 'lucide-react';
+import { Edit3, Eye, Maximize2, Minimize2, Code, Loader2, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'react-hot-toast';
@@ -8,11 +8,12 @@ interface MarkdownInputProps {
     value: string;
     onChange: (value: string) => void;
     onSubmit: () => void;
+    onCancel?: () => void;
     placeholder?: string;
     isLoading?: boolean;
 }
 
-export function MarkdownInput({ value, onChange, onSubmit, placeholder, isLoading }: MarkdownInputProps) {
+export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder, isLoading }: MarkdownInputProps) {
     const [isPreview, setIsPreview] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -20,6 +21,8 @@ export function MarkdownInput({ value, onChange, onSubmit, placeholder, isLoadin
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
             onSubmit();
+        } else if (e.key === 'Escape' && isLoading && onCancel) {
+            onCancel();
         }
     };
 
@@ -104,6 +107,16 @@ export function MarkdownInput({ value, onChange, onSubmit, placeholder, isLoadin
                         )}
                     </div>
                     <div className="flex items-center gap-2">
+                        {isLoading && onCancel && (
+                            <button
+                                onClick={onCancel}
+                                className="p-1.5 text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
+                                title="Cancel request"
+                            >
+                                <XCircle size={18} />
+                                <span className="text-sm">Cancel</span>
+                            </button>
+                        )}
                         {isLoading && (
                             <Loader2 size={18} className="text-blue-500 animate-spin" />
                         )}
@@ -147,6 +160,7 @@ export function MarkdownInput({ value, onChange, onSubmit, placeholder, isLoadin
                 {!isPreview && (
                     <div className="absolute bottom-2 right-2 text-xs text-gray-500">
                         Press {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Enter to send
+                        {isLoading && onCancel ? ' | Esc to cancel' : ''}
                     </div>
                 )}
             </div>

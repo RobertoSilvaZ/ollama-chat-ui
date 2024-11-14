@@ -33,7 +33,7 @@ export function ChatInterface() {
 
   const { models, selectedModel, setSelectedModel } = useModels();
   const { editingTopic, setEditingTopic, createNewChat, deleteTopic, updateTopicTitle } = useTopics();
-  const { isLoading, sendMessage } = useChat(currentTopicId, selectedModel);
+  const { isLoading, sendMessage, cancelRequest } = useChat(currentTopicId, selectedModel);
 
   const messages = useLiveQuery<Message[]>(
     () => currentTopicId ?
@@ -165,6 +165,7 @@ export function ChatInterface() {
             value={input}
             onChange={setInput}
             onSubmit={handleSendMessage}
+            onCancel={isLoading ? cancelRequest : undefined}
             placeholder="Type your message... (Markdown supported)"
             isLoading={isLoading}
           />
