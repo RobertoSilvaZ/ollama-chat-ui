@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Pencil, Trash2, Download, Copy, Check, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { X, Pencil, Trash2, Download, Copy, Check, Search, RefreshCw, Loader2, ArrowUpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { GeneratedImage } from '../db';
 import { ZoomBox } from './ZoomBox';
+import { useImageUpscale } from '../hooks/useImageUpscale';
 
 interface ImageDetailModalProps {
     isOpen: boolean;
@@ -53,12 +54,23 @@ export function ImageDetailModal({
     const [copied, setCopied] = useState(false);
     const [showZoom, setShowZoom] = useState(false);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [selectedScale, setSelectedScale] = useState(2);
     const imageRef = useRef<HTMLImageElement>(null);
     const [currentImage, setCurrentImage] = useState<GeneratedImage>(image);
+    const { upscaleImage, isUpscaling, getMaxAllowedScale } = useImageUpscale();
+    const [maxScale, setMaxScale] = useState(2);
 
     useEffect(() => {
         setCurrentImage(image);
-    }, [image]);
+        // Calculate max scale when image loads
+        const img = new Image();
+        img.onload = () => {
+            const maxAllowedScale = getMaxAllowedScale(img.width, img.height);
+            setMaxScale(maxAllowedScale);
+            setSelectedScale(Math.min(2, maxAllowedScale)); // Default to 2x or lower if max scale is lower
+        };
+        img.src = image.imageData;
+    }, [image, getMaxAllowedScale]);
 
     if (!isOpen) return null;
 
@@ -90,6 +102,20 @@ export function ImageDetailModal({
         }
     };
 
+    const handleUpscale = async () => {
+        if (!currentImage.id) return;
+
+        try {
+            const upscaledImageData = await upscaleImage(currentImage.id, currentImage.imageData, selectedScale);
+            setCurrentImage(prev => ({
+                ...prev,
+                imageData: upscaledImageData
+            }));
+        } catch (error) {
+            console.error('Error upscaling image:', error);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
@@ -102,14 +128,14 @@ export function ImageDetailModal({
                             onClick={() => setShowZoom(!showZoom)}
                             className={`${showZoom ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
                                 }`}
-                            disabled={isRegenerating}
+                            disabled={isRegenerating || isUpscaling}
                         />
                         <ActionButton
                             icon={<X size={20} />}
                             label="Close"
                             onClick={onClose}
                             className="text-gray-400 hover:text-white"
-                            disabled={isRegenerating}
+                            disabled={isRegenerating || isUpscaling}
                         />
                     </div>
                 </div>
@@ -122,14 +148,14 @@ export function ImageDetailModal({
                                     ref={imageRef}
                                     src={currentImage.imageData}
                                     alt={currentImage.prompt}
-                                    className={`w-full rounded-lg ${isRegenerating ? 'opacity-50' : ''}`}
+                                    className={`w-full rounded-lg ${isRegenerating || isUpscaling ? 'opacity-50' : ''}`}
                                 />
-                                {isRegenerating && (
+                                {(isRegenerating || isUpscaling) && (
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <Loader2 size={48} className="text-blue-500 animate-spin" />
                                     </div>
                                 )}
-                                {showZoom && imageRef.current && !isRegenerating && (
+                                {showZoom && imageRef.current && !isRegenerating && !isUpscaling && (
                                     <ZoomBox image={imageRef.current} />
                                 )}
                             </div>
@@ -143,7 +169,7 @@ export function ImageDetailModal({
                                         label="Copy prompt"
                                         onClick={handleCopyPrompt}
                                         className="text-gray-400 hover:text-white"
-                                        disabled={isRegenerating}
+                                        disabled={isRegenerating || isUpscaling}
                                     />
                                 </div>
                                 <p className="text-gray-300 mb-6 break-words">{currentImage.prompt}</p>
@@ -168,27 +194,57 @@ export function ImageDetailModal({
                                     </>
                                 )}
 
+                                <div className="mb-6">
+                                    <h3 className="text-lg font-semibold text-white mb-2">Upscale Settings</h3>
+                                    <div className="flex items-center gap-4">
+                                        <select
+                                            value={selectedScale}
+                                            onChange={(e) => setSelectedScale(Number(e.target.value))}
+                                            className="bg-gray-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
+                                            disabled={isRegenerating || isUpscaling || maxScale < 2}
+                                        >
+                                            {[...Array(maxScale - 1)].map((_, i) => (
+                                                <option key={i + 2} value={i + 2}>
+                                                    {i + 2}x Upscale
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {maxScale < 2 && (
+                                            <p className="text-yellow-500 text-sm">
+                                                Image is too large to upscale further
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="flex justify-center gap-4 mt-8">
                                     <ActionButton
                                         icon={<RefreshCw size={24} className={isRegenerating ? 'animate-spin' : ''} />}
                                         label="Regenerate"
                                         onClick={handleRegenerate}
                                         className="bg-purple-600 text-white"
-                                        disabled={isRegenerating}
+                                        disabled={isRegenerating || isUpscaling}
+                                    />
+                                    <ActionButton
+                                        icon={<ArrowUpCircle size={24} className={isUpscaling ? 'animate-spin' : ''} />}
+                                        label="Upscale"
+                                        onClick={handleUpscale}
+                                        className="bg-indigo-600 text-white"
+                                        disabled={isRegenerating || isUpscaling || maxScale < 2}
                                     />
                                     <ActionButton
                                         icon={<Download size={24} />}
                                         label="Download"
                                         onClick={onDownload}
                                         className="bg-green-600 text-white"
-                                        disabled={isRegenerating}
+                                        disabled={isRegenerating || isUpscaling}
                                     />
                                     <ActionButton
                                         icon={<Copy size={24} />}
                                         label="Duplicate"
                                         onClick={onDuplicate}
                                         className="bg-yellow-600 text-white"
-                                        disabled={isRegenerating}
+                                        disabled={isRegenerating || isUpscaling}
                                     />
                                     <ActionButton
                                         icon={<Pencil size={24} />}
@@ -198,14 +254,14 @@ export function ImageDetailModal({
                                             toast.success('Editing image details');
                                         }}
                                         className="bg-blue-600 text-white"
-                                        disabled={isRegenerating}
+                                        disabled={isRegenerating || isUpscaling}
                                     />
                                     <ActionButton
                                         icon={<Trash2 size={24} />}
                                         label="Delete"
                                         onClick={handleDelete}
                                         className="bg-red-600 text-white"
-                                        disabled={isRegenerating}
+                                        disabled={isRegenerating || isUpscaling}
                                     />
                                 </div>
                             </div>
