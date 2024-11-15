@@ -1,8 +1,8 @@
-version: "3.8"
+version: '3.8'
 services:
   web:
     container_name: ollama-chat-ui
-    build:
+    build: 
       context: .
       dockerfile: Dockerfile
     ports:
@@ -20,6 +20,7 @@ services:
       - ./.env:/app/.env
       - /app/node_modules
     environment:
+      - VITE_HUGGINGFACE_TOKEN=${VITE_HUGGINGFACE_TOKEN}
       - VITE_OLLAMA_API_URL=${VITE_OLLAMA_API_URL:-http://localhost:11434}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
