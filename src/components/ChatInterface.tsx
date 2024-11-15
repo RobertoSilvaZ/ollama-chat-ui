@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Settings } from 'lucide-react';
-import { toast, Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { db, type Message } from '../db';
 import { ChatMessage } from './ChatMessage';
 import { Sidebar } from './Sidebar';
@@ -93,8 +93,12 @@ export function ChatInterface() {
 
   const handleResendMessage = async (message: Message) => {
     if (isLoading) return;
-    await sendMessage(message.content, messages, botProfile);
-    toast.success('Message resent');
+    const promise = sendMessage(message.content, messages, botProfile);
+    toast.promise(promise, {
+      loading: 'Sending message...',
+      success: 'Message sent',
+      error: 'Failed to send message'
+    });
   };
 
   const handleEditMessage = (content: string) => {
@@ -116,7 +120,6 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      <Toaster position="top-right" />
       <Sidebar
         currentTopicId={currentTopicId}
         onTopicSelect={handleTopicSelect}
