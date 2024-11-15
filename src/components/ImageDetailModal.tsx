@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Pencil, Trash2, Download, Copy, Check } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Pencil, Trash2, Download, Copy, Check, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { GeneratedImage } from '../db';
+import { ZoomBox } from './ZoomBox';
 
 interface ImageDetailModalProps {
     isOpen: boolean;
@@ -14,6 +15,8 @@ interface ImageDetailModalProps {
 
 export function ImageDetailModal({ isOpen, onClose, image, onEdit, onDelete, onDownload }: ImageDetailModalProps) {
     const [copied, setCopied] = React.useState(false);
+    const [showZoom, setShowZoom] = useState(false);
+    const imageRef = useRef<HTMLImageElement>(null);
 
     if (!isOpen) return null;
 
@@ -38,23 +41,39 @@ export function ImageDetailModal({ isOpen, onClose, image, onEdit, onDelete, onD
             <div className="bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b border-gray-700">
                     <h2 className="text-xl font-bold text-white">Image Detail</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-white transition-colors"
-                    >
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowZoom(!showZoom)}
+                            className={`p-2 rounded-lg transition-colors ${showZoom
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                            title={showZoom ? 'Disable zoom' : 'Enable zoom'}
+                        >
+                            <Search size={20} />
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white transition-colors"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-5rem)]">
                     <div className="flex flex-col lg:flex-row gap-8">
                         <div className="lg:flex-1">
-                            <div className="bg-gray-900 rounded-lg p-2">
+                            <div className="bg-gray-900 rounded-lg p-2 relative">
                                 <img
+                                    ref={imageRef}
                                     src={image.imageData}
                                     alt={image.prompt}
                                     className="w-full rounded-lg"
                                 />
+                                {showZoom && imageRef.current && (
+                                    <ZoomBox image={imageRef.current} />
+                                )}
                             </div>
                         </div>
                         <div className="lg:w-96">
