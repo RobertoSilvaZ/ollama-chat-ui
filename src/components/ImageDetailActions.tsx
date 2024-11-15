@@ -42,13 +42,11 @@ export function ImageDetailActions({
 
     const handleScaleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const newScale = parseInt(event.target.value, 10);
-        console.log('newScale: ', newScale);
         if (!isNaN(newScale) && newScale >= 2 && newScale <= maxScale) {
             onSetSelectedScale(newScale);
         }
     };
 
-    console.log('selectedScale: ', selectedScale);
     return (
         <div className="space-y-6">
             <div>

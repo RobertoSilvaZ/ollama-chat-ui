@@ -12,7 +12,7 @@ export function useImageUpscale() {
 
         // Si la imagen es muy pequeña, permitimos escalar hasta 4x
         if (width <= 512 && height <= 512) {
-            return MAX_SCALE;
+            return MAX_SCALE; // Imágenes pequeñas: hasta 4x
         }
 
         // Si la imagen es mediana, permitimos escalar hasta 3x
@@ -24,6 +24,9 @@ export function useImageUpscale() {
         return MIN_SCALE;
     };
 
+    /**
+     * Escala una imagen utilizando `<canvas>` y actualiza la base de datos.
+     */
     const upscaleImage = async (imageId: number, originalImageData: string, scale: number = 2) => {
         if (scale < 2 || scale > 4) {
             throw new Error('Scale must be between 2 and 4');
@@ -59,22 +62,22 @@ export function useImageUpscale() {
             // Draw the image at the new scale
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            // Convert to base64 with high quality
-            const upscaledData = canvas.toDataURL('image/webp', 0.92);
+            // Convertir el canvas a formato PNG de máxima calidad
+            const upscaledData = canvas.toDataURL('image/png', 1.0);
 
-            // Update database
+            // Actualizar la base de datos con la imagen escalada
             await db.images.update(imageId, {
                 imageData: upscaledData,
                 upscaleScale: scale
             });
 
-            // Get updated image
+            // Recuperar la imagen actualizada
             const updatedImage = await db.images.get(imageId);
             if (!updatedImage) {
                 throw new Error('Failed to retrieve updated image');
             }
 
-            toast.success('Image upscaled successfully', { id: toastId });
+            toast.success(`Image upscaled successfully to ${scale}x`, { id: toastId });
             return updatedImage;
 
         } catch (error) {
@@ -94,6 +97,6 @@ export function useImageUpscale() {
     return {
         upscaleImage,
         isUpscaling,
-        getMaxAllowedScale
+        getMaxAllowedScale,
     };
 }

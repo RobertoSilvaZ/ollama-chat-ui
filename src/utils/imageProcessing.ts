@@ -23,7 +23,7 @@ export async function upscaleImage(imageData: string, scale: number = 2): Promis
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                 // Convert to base64 with high quality
-                const upscaledBase64 = canvas.toDataURL('image/webp', 0.92);
+                const upscaledBase64 = canvas.toDataURL('image/png', 1);
                 resolve(upscaledBase64);
             };
 
