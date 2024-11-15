@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Pencil, Trash2, Download, Copy, Check, Search } from 'lucide-react';
+import { X, Pencil, Trash2, Download, Copy, Check, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { GeneratedImage } from '../db';
 import { ZoomBox } from './ZoomBox';
@@ -11,17 +11,57 @@ interface ImageDetailModalProps {
     onEdit: () => void;
     onDelete: () => void;
     onDownload: () => void;
+    onRegenerate: () => Promise<void>;
 }
 
-export function ImageDetailModal({ isOpen, onClose, image, onEdit, onDelete, onDownload }: ImageDetailModalProps) {
-    const [copied, setCopied] = React.useState(false);
+interface ActionButtonProps {
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    className?: string;
+    disabled?: boolean;
+}
+
+function ActionButton({ icon, label, onClick, className = '', disabled = false }: ActionButtonProps) {
+    return (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            className={`group relative p-3 rounded-lg transition-all duration-200 ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-opacity-90'
+                }`}
+            title={label}
+        >
+            {icon}
+            <span className="absolute left-1/2 -translate-x-1/2 -bottom-8 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                {label}
+            </span>
+        </button>
+    );
+}
+
+export function ImageDetailModal({
+    isOpen,
+    onClose,
+    image,
+    onEdit,
+    onDelete,
+    onDownload,
+    onRegenerate
+}: ImageDetailModalProps) {
+    const [copied, setCopied] = useState(false);
     const [showZoom, setShowZoom] = useState(false);
+    const [isRegenerating, setIsRegenerating] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
+    const [currentImage, setCurrentImage] = useState<GeneratedImage>(image);
+
+    useEffect(() => {
+        setCurrentImage(image);
+    }, [image]);
 
     if (!isOpen) return null;
 
     const handleCopyPrompt = async () => {
-        await navigator.clipboard.writeText(image.prompt);
+        await navigator.clipboard.writeText(currentImage.prompt);
         setCopied(true);
         toast.success('Prompt copied to clipboard');
         setTimeout(() => setCopied(false), 2000);
@@ -36,28 +76,39 @@ export function ImageDetailModal({ isOpen, onClose, image, onEdit, onDelete, onD
         }
     };
 
+    const handleRegenerate = async () => {
+        try {
+            setIsRegenerating(true);
+            await onRegenerate();
+            toast.success('Image regenerated successfully');
+        } catch (error) {
+            toast.error('Failed to regenerate image');
+        } finally {
+            setIsRegenerating(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b border-gray-700">
                     <h2 className="text-xl font-bold text-white">Image Detail</h2>
                     <div className="flex items-center gap-2">
-                        <button
+                        <ActionButton
+                            icon={<Search size={20} />}
+                            label={showZoom ? 'Disable zoom' : 'Enable zoom'}
                             onClick={() => setShowZoom(!showZoom)}
-                            className={`p-2 rounded-lg transition-colors ${showZoom
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:text-white'
+                            className={`${showZoom ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
                                 }`}
-                            title={showZoom ? 'Disable zoom' : 'Enable zoom'}
-                        >
-                            <Search size={20} />
-                        </button>
-                        <button
+                            disabled={isRegenerating}
+                        />
+                        <ActionButton
+                            icon={<X size={20} />}
+                            label="Close"
                             onClick={onClose}
-                            className="text-gray-400 hover:text-white transition-colors"
-                        >
-                            <X size={20} />
-                        </button>
+                            className="text-gray-400 hover:text-white"
+                            disabled={isRegenerating}
+                        />
                     </div>
                 </div>
 
@@ -67,11 +118,16 @@ export function ImageDetailModal({ isOpen, onClose, image, onEdit, onDelete, onD
                             <div className="bg-gray-900 rounded-lg p-2 relative">
                                 <img
                                     ref={imageRef}
-                                    src={image.imageData}
-                                    alt={image.prompt}
-                                    className="w-full rounded-lg"
+                                    src={currentImage.imageData}
+                                    alt={currentImage.prompt}
+                                    className={`w-full rounded-lg ${isRegenerating ? 'opacity-50' : ''}`}
                                 />
-                                {showZoom && imageRef.current && (
+                                {isRegenerating && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Loader2 size={48} className="text-blue-500 animate-spin" />
+                                    </div>
+                                )}
+                                {showZoom && imageRef.current && !isRegenerating && (
                                     <ZoomBox image={imageRef.current} />
                                 )}
                             </div>
@@ -80,61 +136,68 @@ export function ImageDetailModal({ isOpen, onClose, image, onEdit, onDelete, onD
                             <div className="sticky top-0">
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="text-lg font-semibold text-white">Prompt</h3>
-                                    <button
+                                    <ActionButton
+                                        icon={copied ? <Check size={16} /> : <Copy size={16} />}
+                                        label="Copy prompt"
                                         onClick={handleCopyPrompt}
-                                        className="p-1.5 text-gray-400 hover:text-white transition-colors"
-                                        title="Copy prompt"
-                                    >
-                                        {copied ? <Check size={16} /> : <Copy size={16} />}
-                                    </button>
+                                        className="text-gray-400 hover:text-white"
+                                        disabled={isRegenerating}
+                                    />
                                 </div>
-                                <p className="text-gray-300 mb-6 break-words">{image.prompt}</p>
+                                <p className="text-gray-300 mb-6 break-words">{currentImage.prompt}</p>
 
                                 <h3 className="text-lg font-semibold text-white mb-2">Created</h3>
                                 <p className="text-gray-300 mb-6">
-                                    {new Date(image.createdAt).toLocaleString()}
+                                    {new Date(currentImage.createdAt).toLocaleString()}
                                 </p>
 
-                                {image.parameters && (
+                                {currentImage.parameters && (
                                     <>
                                         <h3 className="text-lg font-semibold text-white mb-2">Parameters</h3>
                                         <div className="text-gray-300 mb-6 space-y-2">
-                                            <p>Guidance Scale: {image.parameters.guidance_scale}</p>
-                                            <p>Inference Steps: {image.parameters.num_inference_steps}</p>
-                                            <p>Size: {image.parameters?.width}x{image.parameters?.height}</p>
-                                            {image.parameters.negative_prompt && image.parameters.negative_prompt.length > 0 && (
-                                                <p>Negative Prompt: {image.parameters.negative_prompt.join(', ')}</p>
+                                            <p>Guidance Scale: {currentImage.parameters.guidance_scale}</p>
+                                            <p>Inference Steps: {currentImage.parameters.num_inference_steps}</p>
+                                            <p>Size: {currentImage.parameters?.width}x{currentImage.parameters?.height}</p>
+                                            {currentImage.parameters.negative_prompt && currentImage.parameters.negative_prompt.length > 0 && (
+                                                <p>Negative Prompt: {currentImage.parameters.negative_prompt.join(', ')}</p>
                                             )}
-                                            <p>Seed: {image.parameters.seed}</p>
+                                            <p>Seed: {currentImage.parameters.seed}</p>
                                         </div>
                                     </>
                                 )}
 
-                                <div className="flex flex-col gap-3 mt-8">
-                                    <button
+                                <div className="flex justify-center gap-4 mt-8">
+                                    <ActionButton
+                                        icon={<RefreshCw size={24} className={isRegenerating ? 'animate-spin' : ''} />}
+                                        label="Regenerate"
+                                        onClick={handleRegenerate}
+                                        className="bg-purple-600 text-white"
+                                        disabled={isRegenerating}
+                                    />
+                                    <ActionButton
+                                        icon={<Download size={24} />}
+                                        label="Download"
                                         onClick={onDownload}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full"
-                                    >
-                                        <Download size={18} />
-                                        Download Image
-                                    </button>
-                                    <button
+                                        className="bg-green-600 text-white"
+                                        disabled={isRegenerating}
+                                    />
+                                    <ActionButton
+                                        icon={<Pencil size={24} />}
+                                        label="Edit"
                                         onClick={() => {
                                             onEdit();
                                             toast.success('Editing image details');
                                         }}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full"
-                                    >
-                                        <Pencil size={18} />
-                                        Edit Details
-                                    </button>
-                                    <button
+                                        className="bg-blue-600 text-white"
+                                        disabled={isRegenerating}
+                                    />
+                                    <ActionButton
+                                        icon={<Trash2 size={24} />}
+                                        label="Delete"
                                         onClick={handleDelete}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors w-full"
-                                    >
-                                        <Trash2 size={18} />
-                                        Delete Image
-                                    </button>
+                                        className="bg-red-600 text-white"
+                                        disabled={isRegenerating}
+                                    />
                                 </div>
                             </div>
                         </div>

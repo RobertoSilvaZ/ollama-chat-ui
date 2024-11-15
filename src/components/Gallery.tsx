@@ -21,7 +21,8 @@ export function Gallery() {
         setIsEditModalOpen,
         handleDeleteImage,
         handleUpdateImage,
-        handleDownload
+        handleDownload,
+        handleRegenerate
     } = useImageActions();
 
     const images = useLiveQuery(
@@ -58,6 +59,7 @@ export function Gallery() {
                         }}
                         onDelete={() => handleDeleteImage(selectedImage.id!)}
                         onDownload={() => handleDownload(selectedImage)}
+                        onRegenerate={() => handleRegenerate(selectedImage)}
                     />
 
                     <EditImageModal

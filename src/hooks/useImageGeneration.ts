@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db } from '../db';
-import type { GenerationParams } from '../db';
+import type { GenerationParams, GeneratedImage } from '../db';
 
 export function useImageGeneration() {
     const [pendingGenerations, setPendingGenerations] = useState(new Set<string>());
 
-    const generateImage = async (prompt: string, params?: GenerationParams) => {
+    const generateImage = async (prompt: string, params?: GenerationParams, existingImageId?: number) => {
         const generationId = `${Date.now()}-${Math.random()}`;
         setPendingGenerations(prev => new Set(prev).add(generationId));
 
@@ -15,6 +15,13 @@ export function useImageGeneration() {
         });
 
         try {
+            // Always generate a new seed for regeneration
+            const newSeed = Math.floor(Math.random() * 2147483647);
+            const finalParams = {
+                ...params,
+                seed: existingImageId ? newSeed : (params?.seed || newSeed)
+            };
+
             const response = await fetch(
                 "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev",
                 {
@@ -25,10 +32,7 @@ export function useImageGeneration() {
                     method: "POST",
                     body: JSON.stringify({
                         inputs: prompt,
-                        parameters: {
-                            ...params,
-                            seed: params?.seed || Math.floor(Math.random() * 2147483647)
-                        }
+                        parameters: finalParams
                     }),
                 }
             );
@@ -40,24 +44,50 @@ export function useImageGeneration() {
             const blob = await response.blob();
             const reader = new FileReader();
 
-            reader.onloadend = async () => {
-                const base64data = reader.result as string;
-                await db.images.add({
-                    prompt,
-                    imageData: base64data,
-                    createdAt: new Date(),
-                    parameters: {
-                        ...params,
-                        seed: params?.seed || Math.floor(Math.random() * 2147483647)
-                    }
-                });
-                toast.success('Image generated successfully', {
-                    id: toastId,
-                    style: { maxWidth: '500px' }
-                });
-            };
+            return new Promise<GeneratedImage>((resolve, reject) => {
+                reader.onloadend = async () => {
+                    try {
+                        const base64data = reader.result as string;
+                        const imageData = {
+                            prompt,
+                            imageData: base64data,
+                            createdAt: new Date(),
+                            parameters: finalParams
+                        };
 
-            reader.readAsDataURL(blob);
+                        if (existingImageId) {
+                            await db.images.update(existingImageId, imageData);
+                            const updatedImage = await db.images.get(existingImageId);
+                            if (updatedImage) {
+                                resolve(updatedImage);
+                            } else {
+                                reject(new Error('Failed to retrieve updated image'));
+                            }
+                        } else {
+                            const id = await db.images.add(imageData);
+                            const newImage = await db.images.get(id);
+                            if (newImage) {
+                                resolve(newImage);
+                            } else {
+                                reject(new Error('Failed to retrieve new image'));
+                            }
+                        }
+
+                        toast.success(existingImageId ? 'Image regenerated successfully' : 'Image generated successfully', {
+                            id: toastId,
+                            style: { maxWidth: '500px' }
+                        });
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                reader.onerror = () => {
+                    reject(new Error('Failed to read image data'));
+                };
+
+                reader.readAsDataURL(blob);
+            });
         } catch (error) {
             console.error('Error generating image:', error);
             toast.error(
@@ -67,6 +97,7 @@ export function useImageGeneration() {
                     style: { maxWidth: '500px' }
                 }
             );
+            throw error;
         } finally {
             setPendingGenerations(prev => {
                 const next = new Set(prev);

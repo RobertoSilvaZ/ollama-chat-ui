@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { db, type GeneratedImage } from '../db';
+import { useImageGeneration } from './useImageGeneration';
 
 export function useImageActions() {
     const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const { generateImage } = useImageGeneration();
 
     const handleDeleteImage = async (id: number) => {
         try {
@@ -55,6 +57,16 @@ export function useImageActions() {
         }
     };
 
+    const handleRegenerate = async (image: GeneratedImage) => {
+        if (!image.id) return;
+        try {
+            const updatedImage = await generateImage(image.prompt, image.parameters, image.id);
+            setSelectedImage(updatedImage);
+        } catch (error) {
+            console.error('Error regenerating image:', error);
+        }
+    };
+
     return {
         selectedImage,
         setSelectedImage,
@@ -64,6 +76,7 @@ export function useImageActions() {
         setIsEditModalOpen,
         handleDeleteImage,
         handleUpdateImage,
-        handleDownload
+        handleDownload,
+        handleRegenerate
     };
 }
