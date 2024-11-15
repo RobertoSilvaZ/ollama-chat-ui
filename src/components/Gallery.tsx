@@ -11,7 +11,7 @@ import { useImageActions } from '../hooks/useImageActions';
 
 export function Gallery() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const { isGenerating, generateImage } = useImageGeneration();
+    const { generateImage, hasPendingGenerations } = useImageGeneration();
     const {
         selectedImage,
         setSelectedImage,
@@ -30,10 +30,8 @@ export function Gallery() {
     );
 
     const handleGenerate = async (prompt: string, params?: GenerationParams) => {
-        const success = await generateImage(prompt, params);
-        if (success) {
-            setIsCreateModalOpen(false);
-        }
+        generateImage(prompt, params);
+        setIsCreateModalOpen(false);
     };
 
     return (
@@ -42,7 +40,7 @@ export function Gallery() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 onGenerate={handleGenerate}
-                isGenerating={isGenerating}
+                isGenerating={hasPendingGenerations}
             />
 
             {selectedImage && (
@@ -77,23 +75,23 @@ export function Gallery() {
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gallery</h1>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        <Plus size={20} />
-                        Create
-                    </button>
-                </div>
-
-                {isGenerating && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                        <div className="bg-gray-800 rounded-lg p-8 flex flex-col items-center gap-4">
-                            <Loader2 size={40} className="text-blue-500 animate-spin" />
-                            <p className="text-white text-lg">Generating image...</p>
-                        </div>
+                    <div className="flex items-center gap-4">
+                        {hasPendingGenerations && (
+                            <div className="flex items-center gap-2 text-blue-500">
+                                <Loader2 size={20} className="animate-spin" />
+                                <span>Generating...</span>
+                            </div>
+                        )}
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            disabled={hasPendingGenerations}
+                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Plus size={20} />
+                            Create
+                        </button>
                     </div>
-                )}
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {images?.map((image) => (

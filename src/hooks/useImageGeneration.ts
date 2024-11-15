@@ -4,11 +4,15 @@ import { db } from '../db';
 import type { GenerationParams } from '../db';
 
 export function useImageGeneration() {
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [pendingGenerations, setPendingGenerations] = useState(new Set<string>());
 
     const generateImage = async (prompt: string, params?: GenerationParams) => {
-        const toastId = toast.loading('Generating image...');
-        setIsGenerating(true);
+        const generationId = `${Date.now()}-${Math.random()}`;
+        setPendingGenerations(prev => new Set(prev).add(generationId));
+
+        const toastId = toast.loading('Generating image...', {
+            style: { maxWidth: '500px' }
+        });
 
         try {
             const response = await fetch(
@@ -36,32 +40,44 @@ export function useImageGeneration() {
             const blob = await response.blob();
             const reader = new FileReader();
 
-            return new Promise((resolve) => {
-                reader.onloadend = async () => {
-                    const base64data = reader.result as string;
-                    await db.images.add({
-                        prompt,
-                        imageData: base64data,
-                        createdAt: new Date(),
-                        parameters: {
-                            ...params,
-                            seed: params?.seed || Math.floor(Math.random() * 2147483647)
-                        }
-                    });
-                    toast.success('Image generated successfully', { id: toastId });
-                    resolve(true);
-                };
+            reader.onloadend = async () => {
+                const base64data = reader.result as string;
+                await db.images.add({
+                    prompt,
+                    imageData: base64data,
+                    createdAt: new Date(),
+                    parameters: {
+                        ...params,
+                        seed: params?.seed || Math.floor(Math.random() * 2147483647)
+                    }
+                });
+                toast.success('Image generated successfully', {
+                    id: toastId,
+                    style: { maxWidth: '500px' }
+                });
+            };
 
-                reader.readAsDataURL(blob);
-            });
+            reader.readAsDataURL(blob);
         } catch (error) {
             console.error('Error generating image:', error);
-            toast.error(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: toastId });
-            return false;
+            toast.error(
+                error instanceof Error ? error.message : 'Failed to generate image',
+                {
+                    id: toastId,
+                    style: { maxWidth: '500px' }
+                }
+            );
         } finally {
-            setIsGenerating(false);
+            setPendingGenerations(prev => {
+                const next = new Set(prev);
+                next.delete(generationId);
+                return next;
+            });
         }
     };
 
-    return { isGenerating, generateImage };
+    return {
+        generateImage,
+        hasPendingGenerations: pendingGenerations.size > 0
+    };
 }
