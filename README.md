@@ -5,19 +5,22 @@ All the conversations are stored in a database locally in the browser using Inde
 
 ## Run the project
 
-Run in the terminal:
+1.  Install the dependencies:
 
-```
-docker-compose up
-```
+    ```bash
+    npm install
+    ```
 
-## Install dependencies directly in Docker
+2.  Build the container:
 
-Run in the terminal:
+    ```bash
+    docker-compose build
+    ```
 
-```
-docker-compose exec web npm install <library@version>
-```
+3.  Up the container:
+    ```bash
+    docker-compose up
+    ```
 
 ## Credits
 
