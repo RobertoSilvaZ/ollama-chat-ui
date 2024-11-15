@@ -67,6 +67,28 @@ export function useImageActions() {
         }
     };
 
+    const handleDuplicate = async (image: GeneratedImage) => {
+        try {
+            const duplicatedImage = {
+                ...image,
+                id: undefined,
+                createdAt: new Date(),
+                parameters: {
+                    ...image.parameters,
+                    seed: Math.floor(Math.random() * 2147483647) // Generate new seed for duplicate
+                }
+            };
+
+            const id = await db.images.add(duplicatedImage);
+            toast.success('Image duplicated successfully');
+            return id;
+        } catch (error) {
+            console.error('Error duplicating image:', error);
+            toast.error('Failed to duplicate image');
+            throw error;
+        }
+    };
+
     return {
         selectedImage,
         setSelectedImage,
@@ -77,6 +99,7 @@ export function useImageActions() {
         handleDeleteImage,
         handleUpdateImage,
         handleDownload,
-        handleRegenerate
+        handleRegenerate,
+        handleDuplicate
     };
 }

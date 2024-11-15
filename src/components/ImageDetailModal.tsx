@@ -12,6 +12,7 @@ interface ImageDetailModalProps {
     onDelete: () => void;
     onDownload: () => void;
     onRegenerate: () => Promise<void>;
+    onDuplicate: () => void;
 }
 
 interface ActionButtonProps {
@@ -46,7 +47,8 @@ export function ImageDetailModal({
     onEdit,
     onDelete,
     onDownload,
-    onRegenerate
+    onRegenerate,
+    onDuplicate
 }: ImageDetailModalProps) {
     const [copied, setCopied] = useState(false);
     const [showZoom, setShowZoom] = useState(false);
@@ -179,6 +181,13 @@ export function ImageDetailModal({
                                         label="Download"
                                         onClick={onDownload}
                                         className="bg-green-600 text-white"
+                                        disabled={isRegenerating}
+                                    />
+                                    <ActionButton
+                                        icon={<Copy size={24} />}
+                                        label="Duplicate"
+                                        onClick={onDuplicate}
+                                        className="bg-yellow-600 text-white"
                                         disabled={isRegenerating}
                                     />
                                     <ActionButton

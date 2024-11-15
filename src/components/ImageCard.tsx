@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, Download, Hash } from 'lucide-react';
+import { Pencil, Trash2, Download, Hash, Copy } from 'lucide-react';
 import type { GeneratedImage } from '../db';
 
 interface ImageCardProps {
@@ -8,9 +8,10 @@ interface ImageCardProps {
     onEdit: () => void;
     onDelete: () => void;
     onDownload: () => void;
+    onDuplicate: () => void;
 }
 
-export function ImageCard({ image, onView, onEdit, onDelete, onDownload }: ImageCardProps) {
+export function ImageCard({ image, onView, onEdit, onDelete, onDownload, onDuplicate }: ImageCardProps) {
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg group relative">
             <img
@@ -43,6 +44,13 @@ export function ImageCard({ image, onView, onEdit, onDelete, onDownload }: Image
                     title="Download image"
                 >
                     <Download size={16} />
+                </button>
+                <button
+                    onClick={onDuplicate}
+                    className="p-2 bg-gray-800/80 text-white rounded-lg hover:bg-gray-700/80"
+                    title="Duplicate image"
+                >
+                    <Copy size={16} />
                 </button>
                 <button
                     onClick={onEdit}

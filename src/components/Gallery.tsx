@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { db, type GenerationParams } from '../db';
 import { CreateImageModal } from './CreateImageModal';
 import { ImageDetailModal } from './ImageDetailModal';
@@ -22,7 +23,8 @@ export function Gallery() {
         handleDeleteImage,
         handleUpdateImage,
         handleDownload,
-        handleRegenerate
+        handleRegenerate,
+        handleDuplicate
     } = useImageActions();
 
     const images = useLiveQuery(
@@ -31,8 +33,22 @@ export function Gallery() {
     );
 
     const handleGenerate = async (prompt: string, params?: GenerationParams) => {
-        generateImage(prompt, params);
-        setIsCreateModalOpen(false);
+        try {
+            await generateImage(prompt, params);
+            setIsCreateModalOpen(false);
+            toast.success('Image generation started');
+        } catch (error) {
+            toast.error('Failed to start image generation');
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        try {
+            await handleDeleteImage(id);
+            toast.success('Image deleted successfully');
+        } catch (error) {
+            toast.error('Failed to delete image');
+        }
     };
 
     return (
@@ -57,9 +73,10 @@ export function Gallery() {
                             setIsDetailModalOpen(false);
                             setIsEditModalOpen(true);
                         }}
-                        onDelete={() => handleDeleteImage(selectedImage.id!)}
+                        onDelete={() => handleDelete(selectedImage.id!)}
                         onDownload={() => handleDownload(selectedImage)}
                         onRegenerate={() => handleRegenerate(selectedImage)}
+                        onDuplicate={() => handleDuplicate(selectedImage)}
                     />
 
                     <EditImageModal
@@ -108,8 +125,9 @@ export function Gallery() {
                                 setSelectedImage(image);
                                 setIsEditModalOpen(true);
                             }}
-                            onDelete={() => handleDeleteImage(image.id!)}
+                            onDelete={() => handleDelete(image.id!)}
                             onDownload={() => handleDownload(image)}
+                            onDuplicate={() => handleDuplicate(image)}
                         />
                     ))}
                 </div>
