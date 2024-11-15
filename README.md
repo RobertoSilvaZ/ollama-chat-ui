@@ -5,22 +5,24 @@ All the conversations are stored in a database locally in the browser using Inde
 
 ## Run the project
 
-1.  Install the dependencies:
+1. Create a `.env` file in the root of the project with the content of the `.env.example` file.
 
-    ```bash
-    npm install
-    ```
+2. Install the dependencies:
 
-2.  Build the container:
+   ```bash
+   npm install
+   ```
 
-    ```bash
-    docker-compose build
-    ```
+3. Build the container:
 
-3.  Up the container:
-    ```bash
-    docker-compose up
-    ```
+   ```bash
+   docker-compose build
+   ```
+
+4. Up the container:
+   ```bash
+   docker-compose up
+   ```
 
 ## Credits
 
