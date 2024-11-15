@@ -54,11 +54,17 @@ export function useImageUpscale() {
                 upscaleScale: scale
             });
 
+            // Get the updated image from the database
+            const updatedImage = await db.images.get(imageId);
+            if (!updatedImage) {
+                throw new Error('Failed to retrieve updated image');
+            }
+
             // Cleanup
             URL.revokeObjectURL(imageUrl);
 
             toast.success(`Image upscaled by ${scale}x`, { id: toastId });
-            return upscaledImage;
+            return updatedImage;
         } catch (error) {
             console.error('Error upscaling image:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to upscale image', { id: toastId });

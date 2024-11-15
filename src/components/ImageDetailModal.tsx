@@ -24,6 +24,11 @@ interface ActionButtonProps {
     disabled?: boolean;
 }
 
+interface ImageDimensions {
+    width: number;
+    height: number;
+}
+
 function ActionButton({ icon, label, onClick, className = '', disabled = false }: ActionButtonProps) {
     return (
         <button
@@ -54,23 +59,43 @@ export function ImageDetailModal({
     const [copied, setCopied] = useState(false);
     const [showZoom, setShowZoom] = useState(false);
     const [isRegenerating, setIsRegenerating] = useState(false);
-    const [selectedScale, setSelectedScale] = useState(2);
     const imageRef = useRef<HTMLImageElement>(null);
     const [currentImage, setCurrentImage] = useState<GeneratedImage>(image);
+    const [selectedScale, setSelectedScale] = useState(2);
     const { upscaleImage, isUpscaling, getMaxAllowedScale } = useImageUpscale();
     const [maxScale, setMaxScale] = useState(2);
+    const [dimensions, setDimensions] = useState<ImageDimensions | null>(null);
+    const [originalDimensions, setOriginalDimensions] = useState<ImageDimensions | null>(null);
 
+    // Update current image when prop changes
     useEffect(() => {
         setCurrentImage(image);
-        // Calculate max scale when image loads
-        const img = new Image();
-        img.onload = () => {
-            const maxAllowedScale = getMaxAllowedScale(img.width, img.height);
-            setMaxScale(maxAllowedScale);
-            setSelectedScale(Math.min(2, maxAllowedScale)); // Default to 2x or lower if max scale is lower
+    }, [image]);
+
+    // Calculate dimensions and max scale when image loads or changes
+    useEffect(() => {
+        const updateDimensions = () => {
+            const img = new Image();
+            img.onload = () => {
+                const dims = { width: img.width, height: img.height };
+                setDimensions(dims);
+
+                // Only set original dimensions if not upscaled
+                if (!currentImage.upscaleScale) {
+                    setOriginalDimensions(dims);
+                }
+
+                const maxAllowedScale = getMaxAllowedScale(img.width, img.height);
+                setMaxScale(maxAllowedScale);
+                setSelectedScale(Math.min(2, maxAllowedScale));
+            };
+            img.src = currentImage.imageData;
         };
-        img.src = image.imageData;
-    }, [image, getMaxAllowedScale]);
+
+        if (currentImage.imageData) {
+            updateDimensions();
+        }
+    }, [currentImage.imageData, currentImage.upscaleScale, getMaxAllowedScale]);
 
     if (!isOpen) return null;
 
@@ -103,15 +128,27 @@ export function ImageDetailModal({
     };
 
     const handleUpscale = async () => {
-        if (!currentImage.id) return;
+        if (!currentImage.id || !dimensions) return;
 
         try {
-            const upscaledImageData = await upscaleImage(currentImage.id, currentImage.imageData, selectedScale);
-            setCurrentImage(prev => ({
-                ...prev,
-                imageData: upscaledImageData,
-                upscaleScale: selectedScale
-            }));
+            // Store original dimensions before upscaling
+            if (!originalDimensions) {
+                setOriginalDimensions(dimensions);
+            }
+
+            const updatedImage = await upscaleImage(currentImage.id, currentImage.imageData, selectedScale);
+            setCurrentImage(updatedImage);
+
+            // Force dimensions update
+            const img = new Image();
+            img.onload = () => {
+                setDimensions({
+                    width: img.width,
+                    height: img.height
+                });
+            };
+            img.src = updatedImage.imageData;
+
         } catch (error) {
             console.error('Error upscaling image:', error);
         }
@@ -169,6 +206,16 @@ export function ImageDetailModal({
                                     <ZoomBox image={imageRef.current} />
                                 )}
                             </div>
+                            {dimensions && (
+                                <div className="mt-2 text-center text-gray-400">
+                                    Current size: {dimensions.width} × {dimensions.height}px
+                                    {isUpscaled && originalDimensions && (
+                                        <span className="ml-2">
+                                            (Original: {originalDimensions.width} × {originalDimensions.height}px)
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="lg:w-96">
                             <div className="sticky top-0">
