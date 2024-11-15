@@ -48,9 +48,10 @@ export function useImageUpscale() {
                 }
             });
 
-            // Update the image in the database
+            // Update the image in the database with upscale information
             await db.images.update(imageId, {
-                imageData: upscaledImage
+                imageData: upscaledImage,
+                upscaleScale: scale
             });
 
             // Cleanup

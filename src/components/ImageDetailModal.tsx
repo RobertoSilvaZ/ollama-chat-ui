@@ -109,18 +109,28 @@ export function ImageDetailModal({
             const upscaledImageData = await upscaleImage(currentImage.id, currentImage.imageData, selectedScale);
             setCurrentImage(prev => ({
                 ...prev,
-                imageData: upscaledImageData
+                imageData: upscaledImageData,
+                upscaleScale: selectedScale
             }));
         } catch (error) {
             console.error('Error upscaling image:', error);
         }
     };
 
+    const isUpscaled = currentImage.upscaleScale !== undefined;
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-white">Image Detail</h2>
+                    <h2 className="text-xl font-bold text-white">
+                        Image Detail
+                        {isUpscaled && (
+                            <span className="ml-2 text-sm bg-indigo-600 px-2 py-1 rounded">
+                                {currentImage.upscaleScale}x Upscaled
+                            </span>
+                        )}
+                    </h2>
                     <div className="flex items-center gap-2">
                         <ActionButton
                             icon={<Search size={20} />}
@@ -194,44 +204,50 @@ export function ImageDetailModal({
                                     </>
                                 )}
 
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-semibold text-white mb-2">Upscale Settings</h3>
-                                    <div className="flex items-center gap-4">
-                                        <select
-                                            value={selectedScale}
-                                            onChange={(e) => setSelectedScale(Number(e.target.value))}
-                                            className="bg-gray-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
-                                            disabled={isRegenerating || isUpscaling || maxScale < 2}
-                                        >
-                                            {[...Array(maxScale - 1)].map((_, i) => (
-                                                <option key={i + 2} value={i + 2}>
-                                                    {i + 2}x Upscale
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {maxScale < 2 && (
-                                            <p className="text-yellow-500 text-sm">
-                                                Image is too large to upscale further
-                                            </p>
-                                        )}
+                                {!isUpscaled && (
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-semibold text-white mb-2">Upscale Settings</h3>
+                                        <div className="flex items-center gap-4">
+                                            <select
+                                                value={selectedScale}
+                                                onChange={(e) => setSelectedScale(Number(e.target.value))}
+                                                className="bg-gray-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
+                                                disabled={isRegenerating || isUpscaling || maxScale < 2}
+                                            >
+                                                {[...Array(maxScale - 1)].map((_, i) => (
+                                                    <option key={i + 2} value={i + 2}>
+                                                        {i + 2}x Upscale
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {maxScale < 2 && (
+                                                <p className="text-yellow-500 text-sm">
+                                                    Image is too large to upscale further
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 <div className="flex justify-center gap-4 mt-8">
-                                    <ActionButton
-                                        icon={<RefreshCw size={24} className={isRegenerating ? 'animate-spin' : ''} />}
-                                        label="Regenerate"
-                                        onClick={handleRegenerate}
-                                        className="bg-purple-600 text-white"
-                                        disabled={isRegenerating || isUpscaling}
-                                    />
-                                    <ActionButton
-                                        icon={<ArrowUpCircle size={24} className={isUpscaling ? 'animate-spin' : ''} />}
-                                        label="Upscale"
-                                        onClick={handleUpscale}
-                                        className="bg-indigo-600 text-white"
-                                        disabled={isRegenerating || isUpscaling || maxScale < 2}
-                                    />
+                                    {!isUpscaled && (
+                                        <>
+                                            <ActionButton
+                                                icon={<RefreshCw size={24} className={isRegenerating ? 'animate-spin' : ''} />}
+                                                label="Regenerate"
+                                                onClick={handleRegenerate}
+                                                className="bg-purple-600 text-white"
+                                                disabled={isRegenerating || isUpscaling}
+                                            />
+                                            <ActionButton
+                                                icon={<ArrowUpCircle size={24} className={isUpscaling ? 'animate-spin' : ''} />}
+                                                label="Upscale"
+                                                onClick={handleUpscale}
+                                                className="bg-indigo-600 text-white"
+                                                disabled={isRegenerating || isUpscaling || maxScale < 2}
+                                            />
+                                        </>
+                                    )}
                                     <ActionButton
                                         icon={<Download size={24} />}
                                         label="Download"
@@ -246,16 +262,18 @@ export function ImageDetailModal({
                                         className="bg-yellow-600 text-white"
                                         disabled={isRegenerating || isUpscaling}
                                     />
-                                    <ActionButton
-                                        icon={<Pencil size={24} />}
-                                        label="Edit"
-                                        onClick={() => {
-                                            onEdit();
-                                            toast.success('Editing image details');
-                                        }}
-                                        className="bg-blue-600 text-white"
-                                        disabled={isRegenerating || isUpscaling}
-                                    />
+                                    {!isUpscaled && (
+                                        <ActionButton
+                                            icon={<Pencil size={24} />}
+                                            label="Edit"
+                                            onClick={() => {
+                                                onEdit();
+                                                toast.success('Editing image details');
+                                            }}
+                                            className="bg-blue-600 text-white"
+                                            disabled={isRegenerating || isUpscaling}
+                                        />
+                                    )}
                                     <ActionButton
                                         icon={<Trash2 size={24} />}
                                         label="Delete"

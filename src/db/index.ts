@@ -32,6 +32,7 @@ export interface GeneratedImage {
   imageData: string;
   createdAt: Date;
   parameters?: GenerationParams;
+  upscaleScale?: number; // Track if image was upscaled and by what factor
 }
 
 export class ChatDatabase extends Dexie {
@@ -41,10 +42,10 @@ export class ChatDatabase extends Dexie {
 
   constructor() {
     super('ChatDatabase');
-    this.version(2).stores({
+    this.version(3).stores({
       topics: '++id, title, createdAt, modelId',
       messages: '++id, topicId, content, isUser, modelId, createdAt',
-      images: '++id, prompt, createdAt'
+      images: '++id, prompt, createdAt, upscaleScale'
     });
   }
 }
