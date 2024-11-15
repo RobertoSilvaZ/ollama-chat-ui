@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Settings } from 'lucide-react';
+import { Settings, MessageSquarePlus } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { db, type Message } from '../db';
 import { ChatMessage } from './ChatMessage';
@@ -23,13 +23,12 @@ const DEFAULT_BOT_PROFILE: BotProfile = {
 export function ChatInterface() {
   const { topicId } = useParams();
   const navigate = useNavigate();
-  const [currentTopicId, setCurrentTopicId] = useState<number | null>(
-    topicId ? parseInt(topicId, 10) : null
-  );
+  const [currentTopicId, setCurrentTopicId] = useState<number | null>(null);
   const [input, setInput] = useState('');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [botProfile, setBotProfile] = useState<BotProfile>(DEFAULT_BOT_PROFILE);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { models, selectedModel, setSelectedModel } = useModels();
   const { editingTopic, setEditingTopic, createNewChat, deleteTopic, updateTopicTitle } = useTopics();
@@ -47,10 +46,15 @@ export function ChatInterface() {
     []
   );
 
+  // Set initial topic ID from URL params
   useEffect(() => {
     if (topicId) {
       const numericTopicId = parseInt(topicId, 10);
-      setCurrentTopicId(numericTopicId);
+      if (!isNaN(numericTopicId)) {
+        setCurrentTopicId(numericTopicId);
+      }
+    } else {
+      setCurrentTopicId(null);
     }
   }, [topicId]);
 
@@ -59,31 +63,62 @@ export function ChatInterface() {
   }, [messages]);
 
   const handleNewChat = async () => {
-    const newTopicId = await createNewChat(selectedModel);
-    if (newTopicId !== null) {
-      setCurrentTopicId(newTopicId);
-      navigate(`/chat/${newTopicId}`);
-      toast.success('New chat created');
+    try {
+      const newTopicId = await createNewChat(selectedModel);
+      if (newTopicId !== null) {
+        // Update state and navigate
+        setCurrentTopicId(newTopicId);
+        navigate(`/chat/${newTopicId}`);
+
+        // Focus input after navigation
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 100);
+
+        toast.success('New chat created');
+      }
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      toast.error('Failed to create new chat');
     }
   };
 
   const handleTopicSelect = (topicId: number) => {
     setCurrentTopicId(topicId);
     navigate(`/chat/${topicId}`);
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
   };
 
   const handleDeleteTopic = async (topicId: number) => {
-    await deleteTopic(topicId);
-    if (currentTopicId === topicId) {
-      const firstTopic = topics?.[0];
-      if (firstTopic?.id) {
-        handleTopicSelect(firstTopic.id);
-      } else {
-        navigate('/chat');
-        setCurrentTopicId(null);
+    try {
+      await deleteTopic(topicId);
+
+      // Get remaining topics after deletion
+      const remainingTopics = await db.topics.orderBy('createdAt').reverse().toArray();
+
+      // If the deleted topic was the current one, redirect to the most recent topic or clear the view
+      if (currentTopicId === topicId) {
+        const mostRecentTopic = remainingTopics[0];
+        if (mostRecentTopic?.id) {
+          setCurrentTopicId(mostRecentTopic.id);
+          navigate(`/chat/${mostRecentTopic.id}`);
+        } else {
+          setCurrentTopicId(null);
+          navigate('/chat');
+        }
       }
+
+      toast.success('Chat deleted');
+    } catch (error) {
+      console.error('Error deleting topic:', error);
+      toast.error('Failed to delete chat');
     }
-    toast.success('Chat deleted');
   };
 
   const handleDeleteMessage = async (messageId: number) => {
@@ -103,11 +138,16 @@ export function ChatInterface() {
 
   const handleEditMessage = (content: string) => {
     setInput(prev => prev + (prev ? '\n\n' : '') + content);
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
     toast.success('Message copied to input');
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !currentTopicId) return;
 
     const promise = sendMessage(input, messages, botProfile);
     toast.promise(promise, {
@@ -150,27 +190,43 @@ export function ChatInterface() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          {messages?.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message}
-              onDelete={message.id ? () => handleDeleteMessage(message.id!) : undefined}
-              onResend={message.isUser ? () => handleResendMessage(message) : undefined}
-              onEdit={message.isUser ? handleEditMessage : undefined}
-              profileTitle={botProfile.title}
-            />
-          ))}
+          {currentTopicId ? (
+            messages?.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                onDelete={message.id ? () => handleDeleteMessage(message.id!) : undefined}
+                onResend={message.isUser ? () => handleResendMessage(message) : undefined}
+                onEdit={message.isUser ? handleEditMessage : undefined}
+                profileTitle={botProfile.title}
+              />
+            ))
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+              <MessageSquarePlus size={48} className="mb-4" />
+              <p className="text-xl font-medium mb-2">No chat selected</p>
+              <p className="mb-4">Create a new chat or select an existing one to start the conversation</p>
+              <button
+                onClick={handleNewChat}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Create New Chat
+              </button>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <MarkdownInput
+            ref={inputRef}
             value={input}
             onChange={setInput}
             onSubmit={handleSendMessage}
             onCancel={isLoading ? cancelRequest : undefined}
-            placeholder="Type your message... (Markdown supported)"
+            placeholder={currentTopicId ? "Type your message... (Markdown supported)" : "Select or create a chat to start the conversation"}
             isLoading={isLoading}
+            disabled={!currentTopicId}
           />
         </div>
       </div>

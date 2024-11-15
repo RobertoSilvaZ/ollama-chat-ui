@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Edit3, Eye, Maximize2, Minimize2, Code, Loader2, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,12 +11,24 @@ interface MarkdownInputProps {
     onCancel?: () => void;
     placeholder?: string;
     isLoading?: boolean;
+    disabled?: boolean;
 }
 
-export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder, isLoading }: MarkdownInputProps) {
+export const MarkdownInput = forwardRef<HTMLTextAreaElement, MarkdownInputProps>(({
+    value,
+    onChange,
+    onSubmit,
+    onCancel,
+    placeholder,
+    isLoading,
+    disabled
+}, ref) => {
     const [isPreview, setIsPreview] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Forward the internal ref to the parent component
+    useImperativeHandle(ref, () => textareaRef.current!, []);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -49,11 +61,10 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
         onChange(newValue);
         toast.success('Text formatted as code');
 
-        setTimeout(() => {
-            const newPosition = start + formattedText.length;
+        requestAnimationFrame(() => {
             textarea.focus();
-            textarea.setSelectionRange(newPosition, newPosition);
-        }, 0);
+            textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+        });
     };
 
     const PreviewModal = () => {
@@ -85,7 +96,7 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
 
     return (
         <>
-            <div className="relative bg-gray-800 rounded-lg">
+            <div className={`relative bg-gray-800 rounded-lg ${disabled ? 'opacity-50' : ''}`}>
                 <div className="flex items-center justify-between p-2 border-b border-gray-700">
                     <div className="flex gap-2">
                         <button
@@ -93,6 +104,7 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
                             className={`p-1.5 rounded-md transition-colors ${isPreview ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
                                 }`}
                             title={isPreview ? 'Switch to edit mode' : 'Switch to preview mode'}
+                            disabled={disabled}
                         >
                             {isPreview ? <Eye size={18} /> : <Edit3 size={18} />}
                         </button>
@@ -101,6 +113,7 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
                                 onClick={formatAsCode}
                                 className="p-1.5 rounded-md text-gray-400 hover:text-white transition-colors"
                                 title="Format as code"
+                                disabled={disabled}
                             >
                                 <Code size={18} />
                             </button>
@@ -112,6 +125,7 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
                                 onClick={onCancel}
                                 className="p-1.5 text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
                                 title="Cancel request"
+                                disabled={disabled}
                             >
                                 <XCircle size={18} />
                                 <span className="text-sm">Cancel</span>
@@ -124,6 +138,7 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
                             onClick={() => setIsModalOpen(true)}
                             className="p-1.5 text-gray-400 hover:text-white transition-colors"
                             title="Open in modal"
+                            disabled={disabled}
                         >
                             <Maximize2 size={18} />
                         </button>
@@ -145,8 +160,8 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
                                 onChange={(e) => onChange(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder={placeholder}
-                                className="w-full min-h-[100px] max-h-[300px] bg-transparent text-white p-4 resize-y focus:outline-none"
-                                disabled={isLoading}
+                                className="w-full min-h-[100px] max-h-[300px] bg-transparent text-white p-4 resize-y focus:outline-none disabled:cursor-not-allowed"
+                                disabled={disabled || isLoading}
                             />
                             {isLoading && (
                                 <div className="absolute inset-0 bg-gray-900/30 flex items-center justify-center">
@@ -157,7 +172,7 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
                     )}
                 </div>
 
-                {!isPreview && (
+                {!isPreview && !disabled && (
                     <div className="absolute bottom-2 right-2 text-xs text-gray-500">
                         Press {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Enter to send
                         {isLoading && onCancel ? ' | Esc to cancel' : ''}
@@ -168,4 +183,6 @@ export function MarkdownInput({ value, onChange, onSubmit, onCancel, placeholder
             <PreviewModal />
         </>
     );
-}
+});
+
+MarkdownInput.displayName = 'MarkdownInput';

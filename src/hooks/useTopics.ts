@@ -1,44 +1,44 @@
-import { useState } from "react";
-import { toast } from "react-hot-toast";
-import { db, type Topic } from "../db";
+import { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { db, type Topic } from '../db';
 
 export function useTopics() {
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
 
-  const createNewChat = async (
-    selectedModel: string
-  ): Promise<number | null> => {
+  const createNewChat = async (selectedModel: string): Promise<number | null> => {
     try {
       const topic = {
-        title: "New Chat",
+        title: 'New Chat',
         createdAt: new Date(),
-        modelId: selectedModel,
+        modelId: selectedModel
       };
+
       const topicId = await db.topics.add(topic);
-      // Ensure topicId is a number
-      return typeof topicId === "number" ? topicId : null;
+      return typeof topicId === 'number' ? topicId : null;
     } catch (error) {
-      toast.error("Failed to create new chat");
-      return null;
+      console.error('Error creating new chat:', error);
+      throw error;
     }
   };
 
   const deleteTopic = async (topicId: number) => {
     try {
-      await db.messages.where("topicId").equals(topicId).delete();
-      await db.topics.delete(topicId);
-      toast.success("Chat deleted");
+      await db.transaction('rw', db.topics, db.messages, async () => {
+        await db.messages.where('topicId').equals(topicId).delete();
+        await db.topics.delete(topicId);
+      });
     } catch (error) {
-      toast.error("Failed to delete chat");
+      console.error('Error deleting topic:', error);
+      throw error;
     }
   };
 
   const updateTopicTitle = async (topicId: number, newTitle: string) => {
     try {
       await db.topics.update(topicId, { title: newTitle });
-      toast.success("Chat title updated");
     } catch (error) {
-      toast.error("Failed to update chat title");
+      console.error('Error updating topic title:', error);
+      throw error;
     }
   };
 
@@ -47,6 +47,6 @@ export function useTopics() {
     setEditingTopic,
     createNewChat,
     deleteTopic,
-    updateTopicTitle,
+    updateTopicTitle
   };
 }
