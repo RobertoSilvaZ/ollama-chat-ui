@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ChatInterface } from './components/ChatInterface';
 import { Gallery } from './components/Gallery';
+import { ImageDetail } from './components/ImageDetail';
 import { NotFound } from './components/NotFound';
 import { Navigation } from './components/Navigation';
 
@@ -46,6 +47,7 @@ function App() {
           <Route path="/chat" element={<ChatInterface />} />
           <Route path="/chat/:topicId" element={<ChatInterface />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/gallery/:imageId" element={<ImageDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

@@ -4,7 +4,6 @@ import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { db, type GenerationParams } from '../db';
 import { CreateImageModal } from './CreateImageModal';
-import { ImageDetailModal } from './ImageDetailModal';
 import { EditImageModal } from './EditImageModal';
 import { ImageCard } from './ImageCard';
 import { useImageGeneration } from '../hooks/useImageGeneration';
@@ -16,14 +15,11 @@ export function Gallery() {
     const {
         selectedImage,
         setSelectedImage,
-        isDetailModalOpen,
-        setIsDetailModalOpen,
         isEditModalOpen,
         setIsEditModalOpen,
         handleDeleteImage,
         handleUpdateImage,
         handleDownload,
-        handleRegenerate,
         handleDuplicate
     } = useImageActions();
 
@@ -61,34 +57,15 @@ export function Gallery() {
             />
 
             {selectedImage && (
-                <>
-                    <ImageDetailModal
-                        isOpen={isDetailModalOpen}
-                        onClose={() => {
-                            setIsDetailModalOpen(false);
-                            setSelectedImage(null);
-                        }}
-                        image={selectedImage}
-                        onEdit={() => {
-                            setIsDetailModalOpen(false);
-                            setIsEditModalOpen(true);
-                        }}
-                        onDelete={() => handleDelete(selectedImage.id!)}
-                        onDownload={() => handleDownload(selectedImage)}
-                        onRegenerate={() => handleRegenerate(selectedImage)}
-                        onDuplicate={() => handleDuplicate(selectedImage)}
-                    />
-
-                    <EditImageModal
-                        isOpen={isEditModalOpen}
-                        onClose={() => {
-                            setIsEditModalOpen(false);
-                            setSelectedImage(null);
-                        }}
-                        image={selectedImage}
-                        onUpdate={(prompt) => handleUpdateImage(selectedImage.id!, prompt)}
-                    />
-                </>
+                <EditImageModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => {
+                        setIsEditModalOpen(false);
+                        setSelectedImage(null);
+                    }}
+                    image={selectedImage}
+                    onUpdate={(prompt) => handleUpdateImage(selectedImage.id!, prompt)}
+                />
             )}
 
             <div className="max-w-7xl mx-auto">
@@ -117,10 +94,6 @@ export function Gallery() {
                         <ImageCard
                             key={image.id}
                             image={image}
-                            onView={() => {
-                                setSelectedImage(image);
-                                setIsDetailModalOpen(true);
-                            }}
                             onEdit={() => {
                                 setSelectedImage(image);
                                 setIsEditModalOpen(true);
