@@ -136,7 +136,7 @@ export function ImageDetailModal({
                 setOriginalDimensions(dimensions);
             }
 
-            const updatedImage = await upscaleImage(currentImage.id, currentImage.imageData, selectedScale);
+            const updatedImage = await upscaleImage(currentImage.id, currentImage.imageData);
             setCurrentImage(updatedImage);
 
             // Force dimensions update

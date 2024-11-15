@@ -1,73 +1,90 @@
 import { useState } from 'react';
-import Upscaler from 'upscaler';
 import { toast } from 'react-hot-toast';
 import { db } from '../db';
 
-const MAX_TEXTURE_SIZE = 16384; // Maximum WebGL texture size supported by most GPUs
-
 export function useImageUpscale() {
     const [isUpscaling, setIsUpscaling] = useState(false);
-    const upscaler = new Upscaler();
 
-    const getMaxAllowedScale = (width: number, height: number) => {
-        const maxDimension = Math.max(width, height);
-        const maxScale = Math.floor(MAX_TEXTURE_SIZE / maxDimension);
-        return Math.min(4, maxScale); // Cap at 4x upscaling
+    const getMaxAllowedScale = (width: number, height: number): number => {
+        // Definimos los límites de escala
+        const MIN_SCALE = 2;
+        const MAX_SCALE = 4;
+
+        // Si la imagen es muy pequeña, permitimos escalar hasta 4x
+        if (width <= 512 && height <= 512) {
+            return MAX_SCALE;
+        }
+
+        // Si la imagen es mediana, permitimos escalar hasta 3x
+        if (width <= 1024 && height <= 1024) {
+            return 3;
+        }
+
+        // Para imágenes más grandes, solo permitimos 2x
+        return MIN_SCALE;
     };
 
-    const upscaleImage = async (imageId: number, imageData: string, scale: number) => {
+    const upscaleImage = async (imageId: number, originalImageData: string, scale: number = 2) => {
+        if (scale < 2 || scale > 4) {
+            throw new Error('Scale must be between 2 and 4');
+        }
+
         setIsUpscaling(true);
         const toastId = toast.loading('Upscaling image...');
 
         try {
-            // Load image to get dimensions
+            // Create a canvas to upscale the image
             const img = new Image();
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
                 img.onerror = reject;
-                img.src = imageData;
+                img.src = originalImageData;
             });
 
-            // Validate scale factor
-            const maxScale = getMaxAllowedScale(img.width, img.height);
-            if (scale > maxScale) {
-                throw new Error(`Maximum allowed scale for this image is ${maxScale}x`);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+                throw new Error('Failed to get canvas context');
             }
 
-            // Convert base64 to blob URL for upscaler
-            const response = await fetch(imageData);
-            const blob = await response.blob();
-            const imageUrl = URL.createObjectURL(blob);
+            // Set canvas size to the upscaled dimensions
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
 
-            // Configure upscaler
-            const upscaledImage = await upscaler.upscale(imageUrl, {
-                output: 'base64',
-                patchSize: 512, // Smaller patch size to reduce memory usage
-                progress: (progress: number) => {
-                    toast.loading(`Upscaling: ${Math.round(progress * 100)}%`, { id: toastId });
-                }
-            });
+            // Use better image scaling algorithm
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
 
-            // Update the image in the database with upscale information
+            // Draw the image at the new scale
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Convert to base64 with high quality
+            const upscaledData = canvas.toDataURL('image/webp', 0.92);
+
+            // Update database
             await db.images.update(imageId, {
-                imageData: upscaledImage,
+                imageData: upscaledData,
                 upscaleScale: scale
             });
 
-            // Get the updated image from the database
+            // Get updated image
             const updatedImage = await db.images.get(imageId);
             if (!updatedImage) {
                 throw new Error('Failed to retrieve updated image');
             }
 
-            // Cleanup
-            URL.revokeObjectURL(imageUrl);
-
-            toast.success(`Image upscaled by ${scale}x`, { id: toastId });
+            toast.success('Image upscaled successfully', { id: toastId });
             return updatedImage;
+
         } catch (error) {
             console.error('Error upscaling image:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to upscale image', { id: toastId });
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to upscale image',
+                { id: toastId }
+            );
             throw error;
         } finally {
             setIsUpscaling(false);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pencil, Trash2, Download, Hash, Copy, ArrowUpCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import type { GeneratedImage } from '../db';
+import { useNavigate } from 'react-router-dom';
+import { GeneratedImage } from '../db';
 
 interface ImageCardProps {
     image: GeneratedImage;
@@ -12,15 +12,20 @@ interface ImageCardProps {
 }
 
 export function ImageCard({ image, onEdit, onDelete, onDownload, onDuplicate }: ImageCardProps) {
+    const navigate = useNavigate();
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg group relative">
-            <Link to={`/gallery/${image.id}`}>
+            <div
+                onClick={() => navigate(`/gallery/${image.id}`)}
+                className="cursor-pointer"
+            >
                 <img
                     src={image.imageData}
                     alt={image.prompt}
-                    className="w-full h-64 object-cover cursor-pointer"
+                    className="w-full h-64 object-cover transition-transform hover:scale-105"
                 />
-            </Link>
+            </div>
             <div className="p-4">
                 <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-2">
                     {image.prompt}
