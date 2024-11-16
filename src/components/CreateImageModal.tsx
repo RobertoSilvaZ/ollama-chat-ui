@@ -14,7 +14,7 @@ export function CreateImageModal({ isOpen, onClose, onGenerate, isGenerating }: 
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [params, setParams] = useState<GenerationParams>({
         guidance_scale: 7.5,
-        num_inference_steps: 30,
+        num_inference_steps: 50,
         width: 512,
         height: 512,
         seed: Math.floor(Math.random() * 2147483647)
@@ -65,21 +65,8 @@ export function CreateImageModal({ isOpen, onClose, onGenerate, isGenerating }: 
                         <textarea
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 min-h-[100px]"
+                            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 min-h-[200px]"
                             placeholder="Describe the image you want to generate..."
-                            disabled={isGenerating}
-                        />
-                    </div>
-
-                    <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-200 mb-2">
-                            Negative Prompt
-                        </label>
-                        <textarea
-                            value={negativePrompt}
-                            onChange={(e) => setNegativePrompt(e.target.value)}
-                            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2"
-                            placeholder="Describe what you don't want in the image..."
                             disabled={isGenerating}
                         />
                     </div>
@@ -95,6 +82,19 @@ export function CreateImageModal({ isOpen, onClose, onGenerate, isGenerating }: 
 
                     {showAdvanced && (
                         <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-200 mb-2">
+                                    Negative Prompt
+                                </label>
+                                <textarea
+                                    value={negativePrompt}
+                                    onChange={(e) => setNegativePrompt(e.target.value)}
+                                    className="w-full bg-gray-700 text-white rounded-lg px-3 py-2"
+                                    placeholder="Describe what you don't want in the image..."
+                                    disabled={isGenerating}
+                                />
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-200 mb-2">
                                     Guidance Scale ({params.guidance_scale})
